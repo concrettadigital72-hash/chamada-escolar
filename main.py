@@ -177,6 +177,7 @@ if st.session_state['authentication_status'] is None:
     if login_button:
         try:
             credentials = st.secrets.get("credentials", {}).get("usernames", {})
+<<<<<<< HEAD
             username_input = st.session_state.get("login_username", "")
             password_input = st.session_state.get("login_password", "")
 
@@ -187,11 +188,21 @@ if st.session_state['authentication_status'] is None:
                 # Garante que a senha armazenada é uma string e parece um hash bcrypt
                 if isinstance(stored_password_hash, str) and stored_password_hash.startswith('$2b$'):
                     # A verificação só pode acontecer com bcrypt.
+=======
+            
+            if username_input in credentials:
+                stored_password_hash = credentials[username_input]["password"]
+                
+                # --- VERIFICAÇÃO DE SENHA COM bcrypt ---
+                if isinstance(stored_password_hash, str) and stored_password_hash.startswith('$2b$'):
+                    # Senha hasheada (formato bcrypt)
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
                     if bcrypt.checkpw(password_input.encode('utf-8'), stored_password_hash.encode('utf-8')):
                         st.session_state['authentication_status'] = True
                         st.session_state['name'] = credentials[username_input]["name"]
                         st.session_state['username'] = username_input
                         st.success(f"Bem-vindo, {st.session_state['name']}!")
+<<<<<<< HEAD
                         time.sleep(0.5)
                         st.rerun()
                     else:
@@ -205,6 +216,28 @@ if st.session_state['authentication_status'] is None:
             else:
                 # Usuário não encontrado
                 st.error("Usuário ou senha incorretos.")
+=======
+                        time.sleep(0.5) 
+                        st.rerun() # Recarrega a página para entrar no app
+                    else:
+                        st.error("Usuário/senha incorretos.")
+                        st.session_state['authentication_status'] = False
+                else:
+                    # Se a senha no secrets.toml não for hasheada (AVISO: APENAS PARA TESTE/DEV RÁPIDO)
+                    if password_input == stored_password_hash: # Comparação de texto claro
+                        st.session_state['authentication_status'] = True
+                        st.session_state['name'] = credentials[username_input]["name"]
+                        st.session_state['username'] = username_input
+                        st.success(f"Bem-vindo, {st.session_state['name']}!")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error("Usuário/senha incorretos (verifique se a senha no secrets.toml está hasheada com bcrypt).")
+                        st.session_state['authentication_status'] = False
+
+            else:
+                st.error("Usuário/senha incorretos.")
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
                 st.session_state['authentication_status'] = False
 
         except KeyError as ke:
@@ -213,6 +246,10 @@ if st.session_state['authentication_status'] is None:
         except Exception as e:
             st.error(f"Erro inesperado na autenticação: {str(e)}")
             st.session_state['authentication_status'] = False
+<<<<<<< HEAD
+=======
+
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
 elif st.session_state['authentication_status'] is False:
     st.error('Nome de utilizador ou senha incorretos.')
     # Após erro, resetamos para None para que o formulário de login apareça novamente
@@ -311,6 +348,7 @@ if st.session_state['authentication_status'] == True:
         st.subheader("Atualização Manual de Status")
 
         alunos_df, _ = carregar_alunos_db()
+<<<<<<< HEAD
         # Garante que a lista de alunos não esteja vazia para evitar erros no selectbox
         if alunos_df.empty:
             st.warning("Não há alunos carregados na base de dados.")
@@ -350,6 +388,34 @@ if st.session_state['authentication_status'] == True:
                         conn.close()
 
         # Chama a página de gestão individual, garantindo que df_base_alunos foi definido
+=======
+        lista_alunos = alunos_df['nome'].tolist()
+
+        aluno_selecionado = st.selectbox("Selecione o aluno:", lista_alunos)
+        novo_status = st.radio("Novo status:", ("Presente", "Faltou"), key="status_radio")
+
+        if st.button("Atualizar Status"):
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                status_db = "P" if novo_status == "Presente" else "F"
+
+                cursor.execute("""
+                    UPDATE chamadas 
+                    SET status = ?
+                    WHERE aluno_id = (SELECT id FROM alunos WHERE nome = ?)
+                    AND data = date('now')
+                """, (status_db, aluno_selecionado))
+
+                conn.commit()
+                st.success(f"Status de {aluno_selecionado} atualizado para {novo_status}")
+            except Exception as e:
+                st.error(f"Erro ao atualizar: {str(e)}")
+            finally:
+                if conn:
+                    conn.close()
+
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
         pagina_gestao_individual(df_base_alunos, professor_logado)
 
     elif pagina == "Relatórios e Ferramentas":
