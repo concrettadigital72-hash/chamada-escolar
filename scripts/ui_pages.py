@@ -220,6 +220,7 @@ def pagina_dashboard(categorias_config: Dict[str, Any]) -> None:
     """Renderiza o dashboard de análise de faltas."""
     st.header("📊 Dashboard de Análise", divider="rainbow")
     
+    # A variável correta 'df_faltas' é carregada aqui.
     df_faltas = carregar_todas_faltas()
     
     if df_faltas.empty:
@@ -236,37 +237,43 @@ def pagina_dashboard(categorias_config: Dict[str, Any]) -> None:
     
     st.divider()
     
+    # As duas colunas são definidas aqui
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("📅 Faltas por Mês")
         if not df_faltas.empty:
             df_faltas['data'] = pd.to_datetime(df_faltas['data'])
-            faltas_por_mes = df_faltas.set_index('data').groupby(pd.Grouper(freq='M')).size()
+            # AVISO: A frequência 'M' foi substituída por 'ME' para compatibilidade futura
+            faltas_por_mes = df_faltas.set_index('data').groupby(pd.Grouper(freq='ME')).size()
             faltas_por_mes.index = faltas_por_mes.index.strftime('%B %Y')
             st.bar_chart(faltas_por_mes)
         else:
             st.info("Nenhum dado de falta para mostrar a frequência mensal.")
         
-        st.subheader("🏆 Alunos com Mais Presenças")
-        df_presentes = df_faltas[df_faltas['status'].str.upper() == 'P']
-        if not df_presentes.empty:
-            contagem_presencas = df_presentes['nome_aluno'].value_counts().reset_index()
-            contagem_presencas.columns = ['Aluno', 'Total de Presenças']
-            st.dataframe(contagem_presencas.head(5), 
-                        hide_index=True, 
-                        column_config={"Aluno": "Aluno", "Total de Presenças": "Presenças"})
+        # --- CÓDIGO CORRIGIDO E NO LUGAR CERTO ---
+        st.subheader("🏆 Alunos com Mais Faltas")
+        if not df_faltas.empty:
+            top_faltas = df_faltas['nome_aluno'].value_counts().nlargest(10)
+            fig = px.bar(top_faltas, x=top_faltas.values, y=top_faltas.index, orientation='h',
+                         labels={'y': 'Aluno', 'x': 'Número de Faltas'},
+                         color=top_faltas.values,
+                         color_continuous_scale=px.colors.sequential.Reds_r)
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'})
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Nenhum registro de presença encontrado.")
+            st.info("Nenhum registro de falta encontrado.")
     
+    # A segunda coluna começa aqui, com a indentação correta
     with col2:
         st.subheader("📌 Motivos das Faltas")
-        if 'justificativa' in df_faltas.columns and not df_faltas['justificativa'].empty:
-            df_faltas_justificadas = df_faltas[df_faltas['status'].str.lower() == 'faltou'].dropna(subset=['justificativa'])
+        if 'justificativa' in df_faltas.columns and df_faltas['justificativa'].notna().any():
+            df_faltas_justificadas = df_faltas.dropna(subset=['justificativa'])
             
             if not df_faltas_justificadas.empty:
                 df_faltas_justificadas['categoria'] = df_faltas_justificadas['justificativa'].apply(
-                    lambda x: classificar_justificativa(x, categorias_config))
+                    lambda x: classificar_justificativa(x, categorias_config)
+                )
                 
                 contagem_categorias = df_faltas_justificadas['categoria'].value_counts()
                 fig_pie = px.pie(
@@ -280,7 +287,6 @@ def pagina_dashboard(categorias_config: Dict[str, Any]) -> None:
                 st.info("Nenhuma justificativa válida para faltas encontrada para classificação.")
         else:
             st.info("Nenhuma justificativa registrada.")
-
 def pagina_relatorios() -> None:
     """Renderiza a página de relatórios e ferramentas."""
     st.header("📋 Relatórios e Ferramentas", divider="rainbow")

@@ -5,7 +5,10 @@ import logging
 from rich.console import Console
 from rich.theme import Theme
 from typing import Dict, List, Optional
-from database_setup import get_db_connection, criar_banco_dados # Importado para garantir a criação do DB
+
+# ===== CORREÇÃO 1: Importações limpas =====
+# Importamos as duas funções necessárias de uma vez.
+from database_setup import get_db_connection, setup_database
 
 # Configuração de logging
 logging.basicConfig(
@@ -28,7 +31,7 @@ ARQUIVO_CHAMADA_DIARIA_UNICO = DATA_DIR / "chamada_diaria.xlsx"
 
 def _processar_e_inserir_alunos(df: pd.DataFrame, filename: str) -> int:
     """Função auxiliar para processar o DataFrame e inserir alunos no DB."""
-    df.columns = [str(c).strip() for c in df.columns] # Limpa espaços em branco dos nomes das colunas
+    df.columns = [str(c).strip() for c in df.columns]
     
     conn = get_db_connection()
     if not conn:
@@ -40,8 +43,7 @@ def _processar_e_inserir_alunos(df: pd.DataFrame, filename: str) -> int:
     
     for _, row in df.iterrows():
         try:
-            if 'Nome Aluno' not in row:
-                console.print(f"[warning]Aviso: Coluna 'Nome Aluno' não encontrada em uma linha do arquivo {filename}. Pulando linha.[/warning]")
+            if 'Nome Aluno' not in row or pd.isna(row['Nome Aluno']):
                 continue
 
             nome_aluno_original = str(row['Nome Aluno']).strip()
@@ -69,11 +71,9 @@ def _processar_e_inserir_alunos(df: pd.DataFrame, filename: str) -> int:
         except KeyError as ke:
             console.print(f"[error]Erro KeyError ao processar linha: {ke}. Verifique os nomes das colunas em '{filename}'.[/error]")
             conn.rollback()
-            break
         except Exception as e:
             console.print(f"[error]Erro ao inserir/atualizar aluno '{row.get('Nome Aluno', 'N/A')}': {e}[/error]")
             conn.rollback()
-            break
     
     if conn:
         conn.close()
@@ -91,28 +91,17 @@ def migrar_base_alunos():
     
     df = None
     try:
-        # Tenta ler como Excel primeiro
-        df = pd.read_excel(ARQUIVO_BASE_ALUNOS)
-        console.print(f"[info]Arquivo lido com sucesso como Excel.[/info]")
+        df = pd.read_csv(ARQUIVO_BASE_ALUNOS, encoding='latin-1', sep=',')
+        if 'Nome Aluno' not in df.columns:
+             df = pd.read_csv(ARQUIVO_BASE_ALUNOS, encoding='utf-8', sep=';')
     except Exception:
-        console.print(f"[warning]Falha ao ler como Excel. Tentando como CSV...[/warning]")
-        # Tenta ler como CSV com diferentes codificações e separadores
-        encodings_to_try = ['latin-1', 'utf-8', 'windows-1252']
-        delimiters_to_try = [',', ';', '\t']
-        for enc in encodings_to_try:
-            for sep in delimiters_to_try:
-                try:
-                    df = pd.read_csv(ARQUIVO_BASE_ALUNOS, encoding=enc, sep=sep, on_bad_lines='skip')
-                    if 'Nome Aluno' in df.columns:
-                        console.print(f"[info]Arquivo lido com sucesso como CSV (encoding: '{enc}', sep: '{sep}').[/info]")
-                        break
-                    else:
-                        df = None
-                except Exception:
-                    df = None
-            if df is not None:
-                break
-
+         console.print(f"[warning]Falha ao ler como CSV. Tentando como Excel...[/warning]")
+         try:
+            df = pd.read_excel(ARQUIVO_BASE_ALUNOS)
+         except Exception as e:
+            console.print(f"[error]Não foi possível ler o arquivo de alunos: {e}[/error]")
+            return 0
+    
     if df is None or 'Nome Aluno' not in df.columns:
         console.print(f"[error]Erro Crítico: Não foi possível ler o arquivo '{ARQUIVO_BASE_ALUNOS.name}' ou a coluna 'Nome Aluno' não foi encontrada.[/error]")
         return 0
@@ -162,7 +151,7 @@ def migrar_historico_chamadas():
                     cursor.execute("SELECT id FROM chamadas WHERE aluno_id = ? AND data = ?", (aluno_id, row['data']))
                     chamada_existente = cursor.fetchone()
                     
-                    status = 'F'
+                    status = 'Faltou'
                     justificativa = str(row.get('justificativa', '')).strip() if pd.notna(row.get('justificativa')) else None
                     professor = str(row.get('professor_responsavel', '')).strip() if pd.notna(row.get('professor_responsavel')) else None
 
@@ -192,7 +181,9 @@ if __name__ == "__main__":
     if not DB_PATH.parent.exists():
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     
-    if not criar_banco_dados():
+    # ===== CORREÇÃO 2: Chamada da função correta =====
+    # Usamos setup_database() que cuida de tudo.
+    if not setup_database():
         console.print("[error]Falha crítica: Não foi possível criar a estrutura do banco de dados.[/error]")
         exit(1)
         
@@ -200,4 +191,3 @@ if __name__ == "__main__":
     migrar_historico_chamadas()
 
     console.print("[success]🎉 Migração de dados concluída![/success]")
-import sqlite3
