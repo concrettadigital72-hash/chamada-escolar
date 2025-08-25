@@ -6,10 +6,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import toml
 from pathlib import Path
-<<<<<<< HEAD
 from .db_utils import carregar_lembretes_aluno, carregar_comportamento_aluno, get_student_history
-=======
->>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
 
 
 # Importações de módulos locais
@@ -148,7 +145,6 @@ def pagina_chamada(xls_horarios: pd.ExcelFile, df_base_alunos: pd.DataFrame, pro
             st.success("Chamada salva com sucesso!")
             st.rerun()
 
-<<<<<<< HEAD
 def pagina_gestao_individual(df_base_alunos: pd.DataFrame, professor_logado: str):
     """Renderiza a página completa de gestão individual de um aluno."""
     st.header("🔍 Gestão Individual do Aluno", divider="rainbow")
@@ -220,144 +216,6 @@ def pagina_gestao_individual(df_base_alunos: pd.DataFrame, professor_logado: str
                 st.dataframe(df_comportamento, use_container_width=True, hide_index=True)
             else:
                 st.write("Nenhum registo de comportamento para este aluno.")
-=======
-def pagina_gestao_individual(df_base_alunos: pd.DataFrame, professor_logado: str) -> None:
-    st.header("👤 Gestão Individual de Alunos")
-    
-    if df_base_alunos.empty:
-        st.warning("Base de alunos vazia. Por favor, cadastre alunos no banco de dados.")
-        return
-        
-    lista_nomes_alunos = [""] + sorted(df_base_alunos['nome'].tolist())
-    aluno_selecionado = st.selectbox("Selecione um aluno:", lista_nomes_alunos)
-    
-    if not aluno_selecionado:
-        return
-        
-    aluno_info = df_base_alunos[df_base_alunos['nome'] == aluno_selecionado].iloc[0]
-    aluno_id = int(aluno_info['id'])
-    
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Histórico", 
-        "📝 Justificar", 
-        "🔔 Lembretes", 
-        "📌 Comportamento"
-    ])
-    
-    with tab1:
-        st.subheader(f"Histórico de {aluno_selecionado}")
-        
-        conn = get_db_connection()
-        if conn:
-            try:
-                df_historico = pd.read_sql_query(
-                    f"""SELECT data, status, justificativa, professor_responsavel 
-                        FROM chamadas 
-                        WHERE aluno_id = {aluno_id} 
-                        ORDER BY data DESC""",
-                    conn
-                )
-                
-                if df_historico.empty:
-                    st.success("Nenhum registro de chamada encontrado para este aluno.")
-                else:
-                    df_historico['data'] = pd.to_datetime(df_historico['data'])
-                    df_display = df_historico.copy()
-                    df_display['data_formatada'] = df_display['data'].dt.strftime('%d/%m/%Y')
-                    
-                    st.dataframe(
-                        df_display[['data_formatada', 'status', 'justificativa', 'professor_responsavel']],
-                        use_container_width=True,
-                        hide_index=True
-                    )
-                    
-                    st.subheader("Frequência Mensal")
-                    faltas_mes = df_historico[df_historico['status'] == 'Faltou']
-                    faltas_mes = faltas_mes.set_index('data').groupby(pd.Grouper(freq='M')).size()
-                    
-                    if not faltas_mes.empty:
-                        faltas_mes.index = faltas_mes.index.strftime('%b/%Y')
-                        st.bar_chart(faltas_mes)
-                    else:
-                        st.info("Nenhuma falta registrada para este aluno.")
-            finally:
-                conn.close()
-    
-    with tab2:
-        st.subheader("Justificar Faltas")
-        
-        data_falta = st.date_input("Data da falta:")
-        justificativa = st.text_area("Justificativa:")
-        
-        if st.button("Salvar Justificativa", type="primary"):
-            if not justificativa:
-                st.warning("Informe a justificativa.")
-            else:
-                sucesso, erro = salvar_justificativa_db(
-                    aluno_id=aluno_id,
-                    data_falta=data_falta,
-                    justificativa=justificativa,
-                    professor=professor_logado,
-                    ligacao_feita=True,
-                    categorias_config=st.session_state.get('CATEGORIAS_JUSTIFICATIVAS', {})
-                )
-                
-                if sucesso:
-                    st.success("Justificativa salva com sucesso!")
-                else:
-                    st.error(f"Erro: {erro}")
-    
-    with tab3:
-        st.subheader("Lembretes")
-        
-        with st.form("novo_lembrete"):
-            novo_lembrete_txt = st.text_area("Novo Lembrete:")
-            if st.form_submit_button("Salvar Lembrete"):
-                if novo_lembrete_txt:
-                    sucesso = salvar_lembrete(aluno_id, novo_lembrete_txt, professor_logado)
-                    if sucesso:
-                        st.success("Lembrete salvo com sucesso!")
-                    else:
-                        st.error("Erro ao salvar lembrete.")
-        
-        st.subheader("Lembretes Registrados")
-        df_lembretes = carregar_lembretes_aluno(aluno_id)
-        if not df_lembretes.empty:
-            for _, row in df_lembretes.iterrows():
-                st.write(f"**{row['data_criacao']}** - {row['lembrete']} (Por: {row['professor_responsavel']})")
-        else:
-            st.info("Nenhum lembrete encontrado para este aluno.")
-    
-    with tab4:
-        st.subheader("Registro de Comportamento")
-        
-        with st.form("novo_comportamento"):
-            tipo_comportamento = st.radio("Tipo:", ["Elogio", "Ocorrência"])
-            observacao_comportamento = st.text_area("Observação:")
-            data_comportamento = st.date_input("Data do Registro:")
-            if st.form_submit_button("Registrar Comportamento"):
-                if observacao_comportamento:
-                    sucesso = salvar_comportamento(
-                        aluno_id, 
-                        tipo_comportamento, 
-                        observacao_comportamento, 
-                        data_comportamento.isoformat(), 
-                        professor_logado
-                    )
-                    if sucesso:
-                        st.success("Registro de comportamento salvo!")
-                    else:
-                        st.error("Erro ao salvar registro de comportamento.")
-        
-        st.subheader("Histórico de Comportamento")
-        df_comportamento = carregar_comportamento_aluno(aluno_id)
-        if not df_comportamento.empty:
-            for _, row in df_comportamento.iterrows():
-                st.write(f"**{row['data']}** - {row['tipo']}: {row['observacao']} (Por: {row['professor_responsavel']})")
-        else:
-            st.info("Nenhum registro de comportamento encontrado para este aluno.")
-
->>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
 def pagina_dashboard(categorias_config: Dict[str, Any]) -> None:
     """Renderiza o dashboard de análise de faltas."""
     st.header("📊 Dashboard de Análise", divider="rainbow")
@@ -427,11 +285,8 @@ def pagina_relatorios() -> None:
     """Renderiza a página de relatórios e ferramentas."""
     st.header("📋 Relatórios e Ferramentas", divider="rainbow")
     
-<<<<<<< HEAD
     df_total_faltas = carregar_todas_faltas()
     
-=======
->>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
     with st.expander("📊 Gerar Relatórios", expanded=True):
         try:
             config_path = Path(__file__).resolve().parents[2] / "config.toml"
@@ -490,7 +345,6 @@ def pagina_relatorios() -> None:
         with tab1:
             st.subheader("Calendário de Faltas")
             fig_calendario = gerar_grafico_calendario(df_faltas)
-<<<<<<< HEAD
             if fig_calendario:
                 # Adicione a key aqui
                 st.plotly_chart(fig_calendario, use_container_width=True, key="dash_calendario")
@@ -498,14 +352,6 @@ def pagina_relatorios() -> None:
                 st.info("Nenhum dado de falta disponível para o calendário.")
         
         
-=======
-            
-            if fig_calendario:
-                st.plotly_chart(fig_calendario, use_container_width=True)
-            else:
-                st.info("Nenhum dado de falta disponível para o calendário.")
-        
->>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
         with tab2:
             st.subheader("Ranking de Faltas")
             df_ranking = gerar_ranking_faltas(df_faltas)
@@ -518,16 +364,8 @@ def pagina_relatorios() -> None:
         with tab3:
             st.subheader("Top 10 Alunos com Mais Faltas")
             fig_top10 = gerar_grafico_top_faltas(df_faltas)
-<<<<<<< HEAD
             if fig_top10:
                 # Adicione a key aqui
                 st.plotly_chart(fig_top10, use_container_width=True, key="dash_top10")
             else:
                 st.info("Nenhum dado disponível para o gráfico de top 10.")
-=======
-            
-            if fig_top10:
-                st.pyplot(fig_top10)
-            else:
-                st.info("Nenhum dado disponível para o gráfico Top 10.")
->>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae

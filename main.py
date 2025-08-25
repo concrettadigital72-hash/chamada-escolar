@@ -9,13 +9,9 @@ import psutil
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 import logging
-<<<<<<< HEAD
 import bcrypt 
 import pandas as pd
 from scripts.db_utils import salvar_alunos_sponte_db, get_db_connection, carregar_alunos_db, carregar_horarios, salvar_justificativa_db
-=======
-import bcrypt # Usado para verificar senhas hasheadas
->>>>>>> bf17c29c059bedc29b51ad3d2f0053c7c21bd1cd
 
 # --- GARANTIA ABSOLUTA DE CAMINHO PARA IMPORTAÇÕES LOCAIS ---
 project_root = Path(__file__).resolve().parent
@@ -310,7 +306,6 @@ if st.session_state.get('authentication_status') is True:
         except Exception as e:
             st.error(f"Erro ao gerar relatórios: {e}")
 
-<<<<<<< HEAD
     
     elif pagina == "Scraper Sponte":
         st.subheader("🔄 Sincronização com Sponte Web")
@@ -328,17 +323,6 @@ if st.session_state.get('authentication_status') is True:
 
         if not sponte_csv_path.exists():
             st.warning("O arquivo `alunos_sponte.csv` ainda não foi gerado. Por favor, execute o Passo 1.")
-=======
-    elif pagina == "Scraper Sponte":
-        st.subheader("Ferramenta de Scraping do Sponte")
-        st.write("Aqui você pode executar o scraper para obter dados atualizados do Sponte.")
-        
-        if verificar_credenciais_sponte():
-            credenciais = {
-                "username": st.secrets["SPONTE"]["username"],
-                "password": st.secrets["SPONTE"]["password"]
-            }
->>>>>>> bf17c29c059bedc29b51ad3d2f0053c7c21bd1cd
         else:
             mod_time = pd.to_datetime(sponte_csv_path.stat().st_mtime, unit='s')
             st.write(f"Última sincronização encontrada de: **{mod_time.strftime('%d/%m/%Y às %H:%M')}**")
@@ -355,29 +339,9 @@ if st.session_state.get('authentication_status') is True:
                     if novos_alunos_count > 0:
                         st.info("Os dados de contato (responsável, telefone) dos novos alunos precisam ser preenchidos manualmente.")
 
-<<<<<<< HEAD
                 except Exception as e:
                     st.error(f"Ocorreu um erro ao importar o arquivo: {e}")
         st.info("O scraper abre uma janela invisível do navegador Chrome para coletar os dados.")
-=======
-        if st.button("Executar Scraper Sponte Agora", type="primary"):
-            with st.spinner("Conectando ao Sponte... Isso pode levar alguns minutos."):
-                if not verificar_driver_local():
-                    st.error("Scraper não pode ser executado sem um ChromeDriver funcional.")
-                else:
-                    try:
-                        resultado = executar_scraper_sponte(credenciais)
-                        if resultado['sucesso']:
-                            st.success(f"Scraper executado com sucesso! Encontrados {len(resultado['alunos'])} alunos.")
-                            if resultado['alunos']:
-                                st.subheader("Alunos encontrados:")
-                                st.json(resultado['alunos'])
-                        else:
-                            st.error(f"Falha ao executar scraper: {resultado['mensagem']}")
-                    except Exception as e:
-                        show_error(f"Erro inesperado ao executar o scraper: {e}")
-        st.info("O scraper abre uma janela invisível do Chrome para coletar os dados.")
->>>>>>> bf17c29c059bedc29b51ad3d2f0053c7c21bd1cd
 
     else: # Dashboard de Análise
         try:
