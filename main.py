@@ -12,7 +12,7 @@ import logging
 import bcrypt 
 import pandas as pd
 from scripts.db_utils import salvar_alunos_sponte_db, get_db_connection, carregar_alunos_db, carregar_horarios, salvar_justificativa_db
-
+from scripts.ui_observacoes import pagina_observacoes
 # --- GARANTIA ABSOLUTA DE CAMINHO PARA IMPORTAÇÕES LOCAIS ---
 project_root = Path(__file__).resolve().parent
 
@@ -204,7 +204,7 @@ if st.session_state.get('authentication_status') is True:
 
     pagina = st.sidebar.radio(
         "Escolha uma ferramenta:",
-        ["Realizar Chamada", "Gestão Individual", "Dashboard de Análise", "Relatórios e Ferramentas", "Scraper Sponte"]
+        ["Realizar Chamada",  "Gestão Individual", "Registro de Observações", "Dashboard de Análise", "Relatórios e Ferramentas", "Scraper Sponte"]
     )
 
     if 'ausentes_do_dia' not in st.session_state:
@@ -264,7 +264,11 @@ if st.session_state.get('authentication_status') is True:
                 pagina_chamada(xls_horarios, df_base_alunos, professor_logado)
         except Exception as e:
             st.error(f"Erro ao carregar horários: {e}")
-
+    elif pagina == "Registro de Observações":
+        try:
+            pagina_observacoes(professor_logado)
+        except Exception as e:
+            show_error(e) # Usando sua função de exibir erro
     elif pagina == "Gestão Individual":
         st.divider()
         st.subheader("Atualização Manual de Status")

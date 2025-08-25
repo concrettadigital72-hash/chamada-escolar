@@ -4,7 +4,6 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from datetime import date, datetime
-import streamlit as st # Necessário se st.error for usado aqui
 import logging
 
 # Configuração de logging
@@ -14,22 +13,18 @@ logging.basicConfig(
 )
 
 # Caminhos globais
-ROOT = Path(__file__).resolve().parents[1] # Volta dois níveis para a raiz do projeto (attendance-bot)
+ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "escola.db"
-# Caminho para o arquivo Excel de horários (assumindo o nome que você tem na pasta data)
-ARQUIVO_HORARIOS = ROOT / "data" / "Planilha de alunos Digital novo (2).xlsx" # <-- VERIFIQUE ESTE NOME EXATO
+ARQUIVO_HORARIOS = ROOT / "data" / "Planilha de alunos Digital novo (2).xlsx"
 EXPORT_DIR = ROOT / "export"
 EXPORT_DIR.mkdir(exist_ok=True)
 
 
-# classificar_justificativa agora precisa de categorias_config vindo do main.py
 def classificar_justificativa(texto: str, categorias_config: Dict[str, List[str]]) -> str:
-    """Classifica uma justificativa de falta em categorias pré-definidas."""
     if pd.isna(texto) or not isinstance(texto, str):
         return "Não Especificado"
     
     texto_lower = str(texto).lower()
-    # Verifica se categorias_config não está vazio e é um dicionário
     if categorias_config and isinstance(categorias_config, dict):
         for categoria, palavras in categorias_config.items():
             if isinstance(palavras, list) and any(palavra.lower() in texto_lower for palavra in palavras):
@@ -46,25 +41,24 @@ def get_db_connection() -> Optional[sqlite3.Connection]:
         return conn
     except sqlite3.Error as e:
         logging.error(f"Erro de conexão com o banco: {e}")
+        st.error(f"Erro de conexão com o banco de dados: {e}")
         return None
-
-# setup_database, criar_banco_dados, verificar_e_inserir_dados_teste
-# Essas funções foram movidas para database_setup.py e são importadas de lá em main.py
 
 
 @st.cache_data
 def carregar_alunos_db():
-    """Carrega todos os alunos do banco de dados."""
+    """Carrega todos os alunos do banco de dados, incluindo a turma."""
     conn = get_db_connection()
     if not conn:
-        st.error("Erro de conexão com o banco de dados.")
-        return pd.DataFrame()
+        return pd.DataFrame(), "Erro de conexão com o banco de dados."
+    
     try:
+        # ===== CORREÇÃO APLICADA AQUI =====
         query = """
-        SELECT id, nome, nome_responsavel, telefone_responsavel
+        SELECT id, nome, turma, nome_responsavel, telefone_responsavel
         FROM alunos
         ORDER BY nome COLLATE NOCASE
-        """
+"""
         df = pd.read_sql_query(query, conn)
         
         if df.empty:
@@ -73,6 +67,12 @@ def carregar_alunos_db():
         df['nome_norm'] = df['nome'].str.strip().str.upper()
         return df, f"Base de dados carregada com {len(df)} alunos."
     except Exception as e:
+        # Verifica se o erro é "no such column: turma"
+        if "no such column: turma" in str(e):
+            st.error("Erro: A coluna 'turma' não existe na tabela 'alunos'. Por favor, apague o arquivo 'data/escola.db' e reinicie a aplicação para que o banco de dados seja recriado com a estrutura correta.")
+            logging.error("Coluna 'turma' ausente. O banco de dados precisa ser recriado.")
+            return pd.DataFrame(), "Estrutura do banco de dados desatualizada."
+        
         logging.error(f"Erro ao carregar alunos: {e}")
         return pd.DataFrame(), f"Erro ao carregar dados dos alunos: {e}"
     finally:
@@ -83,8 +83,9 @@ def carregar_alunos_db():
 def carregar_horarios():
     """Carrega o arquivo Excel com horários das turmas."""
     if not ARQUIVO_HORARIOS.exists():
-        st.error(f"Arquivo '{ARQUIVO_HORARIOS.name}' não encontrado em {ARQUIVO_HORARIOS}.")
-        logging.error(f"Arquivo de horários não encontrado: {ARQUIVO_HORARIOS}")
+        msg = f"Arquivo '{ARQUIVO_HORARIOS.name}' não encontrado."
+        st.error(msg)
+        logging.error(msg)
         return None
         
     try:
@@ -92,14 +93,18 @@ def carregar_horarios():
         dias_semana = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO']
         abas_validas = [aba for aba in xls.sheet_names if aba.upper() in dias_semana]
         if not abas_validas:
-            st.error("Nenhuma aba válida (SEGUNDA, TERÇA, etc.) encontrada no arquivo de horários.")
-            logging.error("Nenhuma aba válida encontrada no arquivo de horários.")
+            msg = "Nenhuma aba válida (SEGUNDA, TERÇA, etc.) encontrada no arquivo de horários."
+            st.error(msg)
+            logging.error(msg)
             return None
         return xls
     except Exception as e:
-        st.error(f"Erro ao ler arquivo de horários: {e}")
-        logging.error(f"Erro ao ler arquivo de horários: {e}")
+        msg = f"Erro ao ler arquivo de horários: {e}"
+        st.error(msg)
+        logging.error(msg)
         return None
+
+# --- O RESTANTE DO SEU CÓDIGO PERMANECE IGUAL ---
 
 def salvar_justificativa_db(
     aluno_id: int,
@@ -118,7 +123,7 @@ def salvar_justificativa_db(
         cursor = conn.cursor()
         data_falta_str = data_falta.strftime('%Y-%m-%d')
         
-        categoria = classificar_justificativa(justificativa, categorias_config) if categorias_config else None
+        categoria = classificar_justificativa(justificativa, categorias_config) if categorias_config else "Outros"
         
         cursor.execute("""
         SELECT id FROM chamadas
@@ -163,7 +168,7 @@ def salvar_chamada_db(
     status: str,
     professor: str
 ) -> bool:
-    """Salva um registro de chamada no banco de dados, ou atualiza se já existir para o mesmo aluno, data e horário."""
+    """Salva um registro de chamada no banco de dados, ou atualiza se já existir."""
     conn = get_db_connection()
     if not conn:
         return False
@@ -214,18 +219,10 @@ def carregar_todas_faltas() -> pd.DataFrame:
     try:
         query = """
         SELECT
-            c.id,
-            c.horario,
-            c.data,
-            c.status,
-            c.justificativa,
-            c.ligacao_feita,
-            c.professor_responsavel,
-            c.categoria_justificativa,
-            a.id as aluno_id,
-            a.nome as nome_aluno, -- Nome do aluno vindo da tabela 'alunos'
-            a.nome_responsavel,
-            a.telefone_responsavel
+            c.id, c.horario, c.data, c.status, c.justificativa,
+            c.ligacao_feita, c.professor_responsavel, c.categoria_justificativa,
+            a.id as aluno_id, a.nome as nome_aluno, a.turma,
+            a.nome_responsavel, a.telefone_responsavel
         FROM chamadas c
         JOIN alunos a ON c.aluno_id = a.id
         ORDER BY c.data DESC

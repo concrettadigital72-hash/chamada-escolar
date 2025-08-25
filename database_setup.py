@@ -46,6 +46,7 @@ def criar_banco_dados():
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            turma TEXT NOT NULL DEFAULT 'N/A',
             nome_responsavel TEXT,
             telefone_responsavel TEXT
         );
@@ -92,6 +93,19 @@ def criar_banco_dados():
             FOREIGN KEY (aluno_id) REFERENCES alunos (id)
         );
         """)
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS observacoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        data TEXT NOT NULL,
+        aluno_id INTEGER NOT NULL,
+        tipo TEXT NOT NULL,
+        detalhes TEXT,
+        acao_tomada TEXT,
+        professor TEXT,
+        FOREIGN KEY (aluno_id) REFERENCES alunos (id)
+);
+""")
+        logging.info("Tabela 'observacoes' verificada/criada.")
         
         # Criar índices para melhor performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_chamadas_aluno_id ON chamadas(aluno_id);")
