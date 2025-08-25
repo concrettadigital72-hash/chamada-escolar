@@ -1,0 +1,15 @@
+# Ignorar ficheiros de cache do Python
+__pycache__/
+
+# Ignorar base de dados e ficheiros de dados legados
+/data/escola.db
+/data/*.xlsx
+
+# Ignorar relatórios gerados
+/export/
+
+# Ignorar ficheiros de log e outros ficheiros temporários
+*.txt
+
+# Ignorar o ficheiro de segredos
+.streamlit/secrets.toml

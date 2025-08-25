@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observações Diárias - Professor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .date-selector, .class-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #e9f7fe;
+        }
+        .btn {
+            padding: 8px 16px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-remove { background-color: #e74c3c; }
+        .btn-export { background-color: #f39c12; }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .form-group { margin-bottom: 15px; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .actions { display: flex; gap: 5px; }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .observation-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .student-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .student-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .student-item:hover { background-color: #f0f7ff; }
+        .student-item.selected {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { background-color: white; }
+            .container { box-shadow: none; }
+        }
+        @media (max-width: 768px) {
+            .header-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Registro de Observações Diárias</h1>
+        
+        <div class="header-controls no-print">
+            <div class="date-selector">
+                <label for="data">Data:</label>
+                <input type="date" id="data" value="">
+            </div>
+            <div class="class-selector">
+                <label for="turma">Turma:</label>
+                <select id="turma">
+                    <option value="">Todas as turmas</option>
+                    </select>
+            </div>
+            <button class="btn btn-export" onclick="exportarParaExcel()">📊 Exportar para Excel</button>
+        </div>
+        
+        <div class="tabs no-print">
+            <div class="tab active" onclick="mudarAba(0)">Adicionar Observação</div>
+            <div class="tab" onclick="mudarAba(1)">Lista de Alunos</div>
+            <div class="tab" onclick="mudarAba(2)">Importar Dados</div>
+        </div>
+        
+        <div class="tab-content active">
+            <div class="observation-form">
+                <h2>Adicionar Nova Observação</h2>
+                <div class="form-group">
+                    <label for="aluno">Aluno:</label>
+                    <select id="aluno">
+                        <option value="">Importe uma planilha para carregar os alunos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo">Tipo de Observação:</label>
+                    <select id="tipo">
+                        <option value="Atraso">Atraso</option>
+                        <option value="Comportamento">Comportamento</option>
+                        <option value="Entrega de Tarefa">Entrega de Tarefa</option>
+                        <option value="Participação">Participação</option>
+                        <option value="Material">Material Esquecido</option>
+                        <option value="Uniforme">Uniforme Irregular</option>
+                        <option value="Saúde">Problema de Saúde</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="detalhes">Detalhes:</label>
+                    <textarea id="detalhes" rows="3" placeholder="Ex: Chegou 30 minutos atrasado, justificou com problema de transporte"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="acao">Ação Tomada:</label>
+                    <select id="acao">
+                        <option value="">Nenhuma ação específica</option>
+                        <option value="ComunicacaoPais">Comunicação com os pais</option>
+                        <option value="AdvertenciaOral">Advertência oral</option>
+                        <option value="AdvertenciaEscrita">Advertência escrita</option>
+                        <option value="EncaminhamentoCoordenacao">Encaminhamento à coordenação</option>
+                        <option value="EncaminhamentoOrientacao">Encaminhamento à orientação</option>
+                        <option value="Outra">Outra medida</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="adicionarObservacao()">➕ Adicionar Observação</button>
+            </div>
+        </div>
+        
+        <div class="tab-content">
+            <h2>Lista de Alunos</h2>
+            <div class="student-list" id="lista-alunos">
+                </div>
+        </div>
+        
+        <div class="tab-content">
+            <h2>Importar Dados da Chamada</h2>
+            <div class="form-group">
+                <label for="arquivo-chamada">Selecionar planilha de alunos (Excel ou CSV):</label>
+                <input type="file" id="arquivo-chamada" accept=".csv,.xlsx,.xls">
+            </div>
+            <button class="btn" onclick="importarChamada()">📁 Importar Alunos da Planilha</button>
+            <div id="status-importacao" style="margin-top: 10px;"></div>
+        </div>
+        
+        <h2>Observações do Dia</h2>
+        <table id="tabela-observacoes">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Turma</th>
+                    <th>Tipo</th>
+                    <th>Detalhes</th>
+                    <th>Ação Tomada</th>
+                    <th class="no-print">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-tabela">
+                </tbody>
+        </table>
+        
+        <div class="summary no-print">
+            <h3>📊 Resumo do Dia</h3>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                <div>
+                    <p id="resumo-atrasos">⏰ Atrasos: 0</p>
+                    <p id="resumo-comportamento">🎭 Comportamento: 0</p>
+                    <p id="resumo-materiais">📚 Materiais: 0</p>
+                </div>
+                <div>
+                    <p id="resumo-uniformes">👕 Uniformes: 0</p>
+                    <p id="resumo-tarefas">📝 Tarefas: 0</p>
+                    <p id="resumo-outros">🔍 Outras observações: 0</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+            <button class="btn" onclick="imprimirPlanilha()">🖨️ Imprimir/Exportar PDF</button>
+            <button class="btn btn-export" onclick="exportarParaSistema()">🔄 Enviar para Sistema</button>
+            <button class="btn btn-remove" onclick="limparTudo()">🗑️ Limpar Tudo</button>
+        </div>
+    </div>
+
+    <script>
+        // Array global para armazenar os alunos. Será preenchido pela importação.
+        let alunos = [];
+
+        // Definir data atual como padrão
+        document.getElementById('data').valueAsDate = new Date();
+        
+        // Carregar observações salvas ao iniciar
+        window.addEventListener('load', function() {
+            carregarObservacoes();
+            atualizarResumo();
+        });
+        
+        // Função para atualizar a interface com a nova lista de alunos
+        function popularListaDeAlunos() {
+            const selectAluno = document.getElementById('aluno');
+            const listaAlunosDiv = document.getElementById('lista-alunos');
+            
+            // Limpa as listas antigas
+            selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
+            listaAlunosDiv.innerHTML = '';
+            
+            // Ordena os alunos por nome
+            alunos.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            // Preenche o dropdown e a lista de alunos na aba
+            alunos.forEach(aluno => {
+                // Adiciona ao dropdown
+                const option = document.createElement('option');
+                option.value = aluno.id;
+                option.textContent = `${aluno.nome} (${aluno.turma})`;
+                selectAluno.appendChild(option);
+                
+                // Adiciona à lista na aba "Lista de Alunos"
+                const div = document.createElement('div');
+                div.className = 'student-item';
+                div.textContent = `${aluno.nome} - ${aluno.turma}`;
+                div.onclick = () => {
+                    document.querySelectorAll('.student-item').forEach(item => item.classList.remove('selected'));
+                    div.classList.add('selected');
+                    selectAluno.value = aluno.id;
+                    mudarAba(0); // Volta para a aba de adicionar observação
+                };
+                listaAlunosDiv.appendChild(div);
+            });
+        }
+        
+        function mudarAba(index) {
+            document.querySelectorAll('.tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+            document.querySelectorAll('.tab-content').forEach((content, i) => {
+                content.classList.toggle('active', i === index);
+            });
+        }
+        
+        function adicionarObservacao() {
+            const alunoId = document.getElementById('aluno').value;
+            const tipo = document.getElementById('tipo').value;
+            const detalhes = document.getElementById('detalhes').value;
+            const acao = document.getElementById('acao').value;
+            
+            if (!alunoId || !detalhes) {
+                alert('Por favor, selecione um aluno e preencha os detalhes.');
+                return;
+            }
+            
+            const alunoSelecionado = alunos.find(a => a.id == alunoId);
+            if (!alunoSelecionado) {
+                 alert('Aluno não encontrado!');
+                 return;
+            }
+
+            const tabela = document.getElementById('corpo-tabela');
+            const novaLinha = document.createElement('tr');
+            
+            novaLinha.innerHTML = `
+                <td>${alunoSelecionado.nome}</td>
+                <td>${alunoSelecionado.turma}</td>
+                <td>${tipo}</td>
+                <td>${detalhes}</td>
+                <td>${acao || 'Nenhuma'}</td>
+                <td class="actions no-print">
+                    <button class="btn btn-remove" onclick="removerObservacao(this)">Remover</button>
+                </td>
+            `;
+            
+            tabela.appendChild(novaLinha);
+            salvarObservacoes();
+            
+            document.getElementById('detalhes').value = '';
+            document.getElementById('acao').value = '';
+            
+            atualizarResumo();
+            alert('Observação adicionada com sucesso!');
+        }
+        
+        function removerObservacao(botao) {
+            if (confirm('Tem certeza que deseja remover esta observação?')) {
+                const linha = botao.closest('tr');
+                linha.remove();
+                salvarObservacoes();
+                atualizarResumo();
+            }
+        }
+        
+        function salvarObservacoes() {
+            const data = document.getElementById('data').value;
+            const linhas = document.querySelectorAll('#corpo-tabela tr');
+            const observacoes = Array.from(linhas).map(linha => {
+                const celulas = linha.querySelectorAll('td');
+                return {
+                    aluno: celulas[0].textContent,
+                    turma: celulas[1].textContent,
+                    tipo: celulas[2].textContent,
+                    detalhes: celulas[3].textContent,
+                    acao: celulas[4].textContent
+                };
+            });
+            localStorage.setItem(`observacoes_${data}`, JSON.stringify(observacoes));
+        }
+        
+        function carregarObservacoes() {
+            const data = document.getElementById('data').value;
+            const observacoesSalvas = localStorage.getItem(`observacoes_${data}`);
+            const tabela = document.getElementById('corpo-tabela');
+            tabela.innerHTML = '';
+            
+            if (observacoesSalvas) {
+                const observacoes = JSON.parse(observacoesSalvas);
+                observacoes.forEach(obs => {
+                    const novaLinha = document.createElement('tr');
+                    novaLinha.innerHTML = `
+                        <td>${obs.aluno}</td>
+                        <td>${obs.turma}</td>
+                        <td>${obs.tipo}</td>
+                        <td>${obs.detalhes}</td>
+                        <td>${obs.acao}</td>
+                        <td class="actions no-print">
+                            <button class="btn btn-remove" onclick="removerObservacao(this)">Remover</button>
+                        </td>
+                    `;
+                    tabela.appendChild(novaLinha);
+                });
+            }
+            atualizarResumo();
+        }
+        
+        document.getElementById('data').addEventListener('change', carregarObservacoes);
+        
+        function atualizarResumo() {
+            const contadores = { Atraso: 0, Comportamento: 0, Material: 0, Uniforme: 0, 'Entrega de Tarefa': 0, Outro: 0 };
+            document.querySelectorAll('#corpo-tabela tr').forEach(linha => {
+                const tipo = linha.querySelector('td:nth-child(3)').textContent;
+                if (contadores.hasOwnProperty(tipo)) {
+                    contadores[tipo]++;
+                } else {
+                    contadores.Outro++;
+                }
+            });
+            
+            document.getElementById('resumo-atrasos').textContent = `⏰ Atrasos: ${contadores.Atraso}`;
+            document.getElementById('resumo-comportamento').textContent = `🎭 Comportamento: ${contadores.Comportamento}`;
+            document.getElementById('resumo-materiais').textContent = `📚 Materiais: ${contadores.Material}`;
+            document.getElementById('resumo-uniformes').textContent = `👕 Uniformes: ${contadores.Uniforme}`;
+            document.getElementById('resumo-tarefas').textContent = `📝 Tarefas: ${contadores['Entrega de Tarefa']}`;
+            document.getElementById('resumo-outros').textContent = `🔍 Outras observações: ${contadores.Outro}`;
+        }
+        
+        function imprimirPlanilha() { window.print(); }
+        
+        function exportarParaExcel() {
+            const data = document.getElementById('data').value;
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += `Observações Diárias - ${data}\n\n`;
+            csvContent += "Aluno,Turma,Tipo,Detalhes,Ação Tomada\n";
+            
+            document.querySelectorAll('#corpo-tabela tr').forEach(linha => {
+                const celulas = linha.querySelectorAll('td');
+                const linhaDados = Array.from(celulas).slice(0, 5).map(c => `"${c.textContent}"`).join(',');
+                csvContent += linhaDados + '\n';
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `observacoes_${data}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function exportarParaSistema() {
+            alert('Funcionalidade de exportação para o sistema de chamada seria implementada aqui.');
+        }
+
+        // --- FUNÇÃO DE IMPORTAÇÃO CORRIGIDA ---
+        function importarChamada() {
+            const fileInput = document.getElementById('arquivo-chamada');
+            const status = document.getElementById('status-importacao');
+            
+            if (!fileInput.files.length) {
+                status.innerHTML = '<span style="color: red;">Por favor, selecione um arquivo.</span>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const nomes = new Set(); // Usar Set para evitar nomes duplicados
+                    
+                    // Itera por todas as linhas e células para encontrar nomes
+                    json.forEach(row => {
+                        row.forEach(cell => {
+                            // Condições para identificar um nome de aluno válido
+                            if (typeof cell === 'string' && cell.trim() !== '' && cell.length > 5 && cell.toUpperCase() === cell && !cell.includes('ÀS') && !cell.includes('FEIRA') && !cell.includes('MANUTENÇÃO')) {
+                                nomes.add(cell.trim());
+                            }
+                        });
+                    });
+                    
+                    if (nomes.size === 0) {
+                        status.innerHTML = '<span style="color: orange;">Nenhum nome de aluno encontrado na planilha. Verifique o formato.</span>';
+                        return;
+                    }
+
+                    // Transforma o Set de nomes em um array de objetos
+                    alunos = Array.from(nomes).map((nome, index) => ({
+                        id: index + 1,
+                        nome: nome,
+                        turma: "Geral" // A planilha de horário não tem turma, então usamos um valor padrão
+                    }));
+
+                    popularListaDeAlunos(); // Atualiza o dropdown e a lista
+                    
+                    status.innerHTML = `<span style="color: green;"><b>${alunos.length} alunos</b> importados com sucesso!</span>`;
+                    mudarAba(1); // Muda para a aba da lista de alunos para visualização
+
+                } catch (error) {
+                    status.innerHTML = `<span style="color: red;">Erro ao processar o arquivo: ${error.message}</span>`;
+                }
+            };
+            
+            reader.onerror = function() {
+                status.innerHTML = '<span style="color: red;">Erro ao ler o arquivo.</span>';
+            };
+            
+            // Lê o arquivo como ArrayBuffer, que funciona tanto para CSV quanto para XLSX com a biblioteca SheetJS
+            reader.readAsArrayBuffer(file);
+        }
+
+        function limparTudo() {
+            if (confirm('Tem certeza que deseja limpar todas as observações desta data?')) {
+                const data = document.getElementById('data').value;
+                localStorage.removeItem(`observacoes_${data}`);
+                document.getElementById('corpo-tabela').innerHTML = '';
+                atualizarResumo();
+            }
+        }
+    </script>
+</body>
+</html>

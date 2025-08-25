@@ -1,0 +1,20 @@
+# config.toml
+
+[geral]
+data_referencia = "auto"
+
+[arquivos]
+base_de_alunos = "base_de_alunos.xlsx"
+
+[whatsapp]
+professor = "Filipe"
+escola = "Escola Metha"
+
+[categorias]
+motivo_saude    = ["virose", "febre", "dor", "atestado", "médico", "consulta", "hospital", "doente", "gripe", "gripado", "asma", "cólica", "alergia"]
+motivo_trabalho = ["trabalho", "emprego", "entrevista"]
+motivo_familia  = ["pai", "mãe", "irmã", "irmão", "avó", "falec", "familiar"]
+motivo_transporte = ["transporte", "ônibus", "condução", "carro", "uber", "passagem"]
+motivo_pessoal  = ["pessoal", "compromisso", "resolver", "documento"]
+sem_contato     = ["não atendida", "incorreto", "inexistente", "sem resposta"]
+outros_pendente = ["...", "aguardando"]
