@@ -1,6 +1,9 @@
 from typing import List, Tuple, Optional, Dict, Any, Union
 import sqlite3
+<<<<<<< HEAD
 import streamlit as st
+=======
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
 import pandas as pd
 from pathlib import Path
 from datetime import date, datetime
@@ -52,6 +55,7 @@ def get_db_connection() -> Optional[sqlite3.Connection]:
 # Essas funções foram movidas para database_setup.py e são importadas de lá em main.py
 
 
+<<<<<<< HEAD
 @st.cache_data
 def carregar_alunos_db():
     """Carrega todos os alunos do banco de dados."""
@@ -59,6 +63,14 @@ def carregar_alunos_db():
     if not conn:
         st.error("Erro de conexão com o banco de dados.")
         return pd.DataFrame()
+=======
+@st.cache_data(ttl=600)
+def carregar_alunos_db() -> Tuple[pd.DataFrame, str]:
+    """Carrega todos os alunos do banco de dados."""
+    conn = get_db_connection()
+    if not conn:
+        return pd.DataFrame(), "Erro de conexão com o banco de dados."
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
     try:
         query = """
         SELECT id, nome, nome_responsavel, telefone_responsavel
@@ -79,8 +91,13 @@ def carregar_alunos_db():
         if conn:
             conn.close()
 
+<<<<<<< HEAD
 @st.cache_resource
 def carregar_horarios():
+=======
+@st.cache_resource(ttl=3600)
+def carregar_horarios() -> Optional[pd.ExcelFile]:
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
     """Carrega o arquivo Excel com horários das turmas."""
     if not ARQUIVO_HORARIOS.exists():
         st.error(f"Arquivo '{ARQUIVO_HORARIOS.name}' não encontrado em {ARQUIVO_HORARIOS}.")
@@ -484,6 +501,7 @@ def carregar_comportamento_aluno(aluno_id: int) -> pd.DataFrame:
         logging.error(f"Erro ao carregar comportamento para aluno_id {aluno_id}: {e}")
         return pd.DataFrame()
     finally:
+<<<<<<< HEAD
         if conn: conn.close()
 
 # A FUNÇÃO ABAIXO FOI MOVIDA PARA O NÍVEL CORRETO DE INDENTAÇÃO
@@ -508,3 +526,6 @@ def get_student_history(aluno_id: int) -> pd.DataFrame:
     finally:
         if conn:
             conn.close()
+=======
+        if conn: conn.close()
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae

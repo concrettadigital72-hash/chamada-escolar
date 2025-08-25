@@ -9,8 +9,11 @@ import pandas as pd
 import logging
 from scripts.db_utils import get_db_connection
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 from .db_utils import carregar_todas_faltas
 
+=======
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
 from scripts.analysis import (
     gerar_ranking_faltas,
     gerar_grafico_calendario,
@@ -23,10 +26,17 @@ from scripts.sync_data import sincronizar_dados
 def pagina_relatorios() -> None:
     """Renderiza a página de relatórios e ferramentas."""
     st.header("📋 Relatórios e Ferramentas", divider="rainbow")
+<<<<<<< HEAD
     df_total_faltas = carregar_todas_faltas()
 
     if df_total_faltas.empty:
         st.warning("Nenhum dado de falta foi encontrado na base de dados. Execute o script de migração (migrate_to_db.py) se tiver dados históricos em planilhas.")
+=======
+    df_total_faltas = pd.DataFrame()  # Inicializa um DataFrame vazio
+
+    if df_total_faltas.empty:
+        st.warning("Nenhum dado de falta foi encontrado nos arquivos CSV. Verifique se os arquivos estão na pasta correta e não estão vazios.")
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
         return
 
     tab1, tab2, tab3 = st.tabs(["🗓️ Calendário", "🏆 Ranking", "🔟 Top 10"])
@@ -36,7 +46,11 @@ def pagina_relatorios() -> None:
         with st.spinner("Gerando calendário..."):
             fig_calendario = gerar_grafico_calendario(df_total_faltas)
             if fig_calendario:
+<<<<<<< HEAD
                 st.plotly_chart(fig_calendario, use_container_width=True, key="relatorio_calendario")
+=======
+                st.plotly_chart(fig_calendario, use_container_width=True)
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
             else:
                 st.info("Nenhum dado de falta disponível para gerar o calendário.")
 
@@ -54,7 +68,12 @@ def pagina_relatorios() -> None:
         with st.spinner("Gerando gráfico..."):
             fig_top10 = gerar_grafico_top_faltas(df_total_faltas)
             if fig_top10:
+<<<<<<< HEAD
                 st.plotly_chart(fig_top10, use_container_width=True, key="relatorio_top10")
+=======
+                st.pyplot(fig_top10)
+                plt.close(fig_top10) # Limpa a figura da memória
+>>>>>>> c19bda253a042a39f0d8d16acd0dc96f2b1dabae
             else:
                 st.info("Nenhum dado disponível para o gráfico de Top 10.")
 
